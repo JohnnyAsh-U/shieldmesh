@@ -1,0 +1,22 @@
+services:
+  nats:
+    image: docker.io/library/nats:latest
+
+    constainer_name: shield-nats
+    command:
+      - "-js"
+      - "-c"
+      - "/etc/nats/nats.conf"
+
+    ports:
+      - "4222:4222"
+
+    volumes:
+      - shieldmesh-nats-data:/data
+      - ./nats.conf:/etc/nats/nats.conf:ro
+
+    restart: unless-stopped
+
+volumes:
+
+  shieldmesh-nats-data:
