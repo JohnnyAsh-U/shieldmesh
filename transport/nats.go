@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/JohnnyAsh-U/shieldmesh/internal/store"
 	"github.com/JohnnyAsh-U/shieldmesh/shared"
-	"github.com/JohnnyAsh-U/shieldmesh/store"
 	"github.com/nats-io/nats.go"
 	natsgo "github.com/nats-io/nats.go"
 )
@@ -95,7 +95,7 @@ func (t *NatsTransport) SetNodeName(name string) {
 }
 
 func key(subject shared.Subject) string {
-	return subject.Type + ":" + subject.ID
+	return subject.Type + "_" + subject.ID
 }
 
 func (t *NatsTransport) Close() error {
@@ -108,14 +108,14 @@ func (t *NatsTransport) Close() error {
 // Engine
 
 // node/middleware
-func (t *NatsTransport) GetDecision(ctx context.Context, subject shared.Subject) (store.Decision, bool) {
+func (t *NatsTransport) GetDecision(ctx context.Context, subject shared.Subject) (shared.Decision, bool) {
 	e, err := t.decisionskv.Get(key(subject))
 	if err != nil {
-		return store.Decision{}, false
+		return shared.Decision{}, false
 	}
-	var d store.Decision
+	var d shared.Decision
 	if err := json.Unmarshal(e.Value(), &d); err != nil {
-		return store.Decision{}, false
+		return shared.Decision{}, false
 	}
 	return d, true
 }
@@ -131,7 +131,7 @@ func (t *NatsTransport) Sync(ctx context.Context, s *store.MapStore) error {
 		if err != nil {
 			continue
 		}
-		var d store.Decision
+		var d shared.Decision
 		json.Unmarshal(e.Value(), &d)
 		if err := s.Apply(d); err != nil {
 			return fmt.Errorf("Error Synchronizing decision %v", err)
@@ -141,10 +141,10 @@ func (t *NatsTransport) Sync(ctx context.Context, s *store.MapStore) error {
 }
 
 func (t *NatsTransport) PublishEvent(ctx context.Context, req shared.Request) error {
-	if req.ID == ""{
+	if req.ID == "" {
 		return fmt.Errorf("ShieldMesh: ID required")
 	}
-	if req.Timestamp.IsZero(){
+	if req.Timestamp.IsZero() {
 		req.Timestamp = time.Now()
 	}
 	payload, err := json.Marshal(req)
@@ -155,34 +155,100 @@ func (t *NatsTransport) PublishEvent(ctx context.Context, req shared.Request) er
 	return err
 }
 
-
 func (t *NatsTransport) SubscribeDecisions(ctx context.Context, storeMap *store.MapStore) error {
-	last := storeMap.LastSeq()
 	opt := nats.DeliverNew()
-
-	// if last > 0 {
-	// 	opt = nats.DeliverLast(last + 1)
-	// }
-	// t.js.PullSubscribe(DecisionSubject, )
 
 	_, err := t.js.Subscribe(DecisionSubject, func(msg *natsgo.Msg) {
 		// meta, _ := msg.Metadata()
-		var d store.Decision
+		var d shared.Decision
 		json.Unmarshal(msg.Data, &d)
-		if last > d.Version {
-			storeMap.Apply(d)
-		}
+		storeMap.Apply(d)
 		msg.Ack()
 	}, nats.Durable("node"+t.nodeName), opt, nats.ManualAck())
 	return err
 }
 
+// EngineTransport implementation
 
-// // Engine
-// RegisterEngine(ctx context.Context, info shieldmesh.EngineInfo)
-// Heartbeat(ctx context.Context, engineID string) error
-// StartHeartbeat(ctx context.Context, info shieldmesh.EngineInfo)
-// ListEngines(ctx context.Context) ([]shieldmesh.EngineInfo, error)
-// SubscribeRequests(ctx context.Context, handler func(shieldmesh.Request)) error
-// PublishDecision(ctx context.Context, d shieldmesh.Decision) (uint64, error)
+func (t *NatsTransport) RegisterEngine(ctx context.Context, info shared.EngineInfo) error {
+	info.LastSeen = time.Now().Unix()
+	payload, _ := json.Marshal(info)
+	_, err := t.engineskv.Put(info.ID, payload)
+	return err
+}
 
+func (t *NatsTransport) Heartbeat(ctx context.Context, engineID string) error {
+	entry, err := t.engineskv.Get(engineID)
+	if err != nil {
+		return err
+	}
+	var info shared.EngineInfo
+	if err := json.Unmarshal(entry.Value(), &info); err != nil {
+		return err
+	}
+	info.LastSeen = time.Now().Unix()
+	payload, _ := json.Marshal(info)
+	_, err = t.engineskv.Put(info.ID, payload)
+	return err
+}
+
+func (t *NatsTransport) ListEngines(ctx context.Context) ([]shared.EngineInfo, error) {
+	keys, err := t.engineskv.Keys()
+	if err != nil {
+		if err == natsgo.ErrNoKeysFound {
+			return []shared.EngineInfo{}, nil
+		}
+		return nil, err
+	}
+	var engines []shared.EngineInfo
+	for _, k := range keys {
+		if entry, err := t.engineskv.Get(k); err == nil {
+			var info shared.EngineInfo
+			if err := json.Unmarshal(entry.Value(), &info); err == nil {
+				engines = append(engines, info)
+			}
+		}
+	}
+	return engines, nil
+}
+
+func (t *NatsTransport) SubscribeRequests(ctx context.Context, handler func(shared.Request)) error {
+	// Create an ephemeral consumer for engines to process streams of requests
+	_, err := t.js.Subscribe(RequestSubject, func(msg *natsgo.Msg) {
+		var req shared.Request
+		if err := json.Unmarshal(msg.Data, &req); err == nil {
+			handler(req)
+		}
+		msg.Ack()
+	}, nats.DeliverNew(), nats.ManualAck())
+	return err
+}
+
+func (t *NatsTransport) PublishDecision(ctx context.Context, d shared.Decision) (uint64, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	// Get latest version for this subject to increment (simple global sequence or per-subject? The architecture mentions a global sequence usually, but let's use global JetStream sequence or KV rev).
+	// We will use the revision returned by KV as the version.
+	payload, err := json.Marshal(d)
+	if err != nil {
+		return 0, err
+	}
+
+	rev, err := t.decisionskv.Put(key(d.Subject), payload)
+	if err != nil {
+		return 0, err
+	}
+
+	// Update the decision with the version and re-publish so it can be streamed
+	d.Version = rev
+	payload, _ = json.Marshal(d)
+	_, err = t.decisionskv.Put(key(d.Subject), payload) 
+	if err != nil {
+		return 0, err
+	}
+
+	// Publish to the stream for synchronization
+	_, err = t.js.Publish(DecisionSubject, payload)
+	return rev + 1, err
+}

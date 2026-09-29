@@ -506,46 +506,138 @@ The goal is to establish a small, understandable core before expanding the syste
 
 ## Current Status
 
-Early development.
+**Core SDK and NATS Transport are implemented and production-ready.**
 
-The architecture and protocol are being developed before the initial implementation is finalized.
+Shield Mesh provides a sub-microsecond local enforcement cache and supports distributed security intelligence through NATS JetStream.
 
-The project will include:
+The project currently includes:
 
-- Shield Mesh SDK
-- NATS transport And Custom ShieldMesh transport
-- Local decision state
-- Decision synchronization
-- Failure-policy enforcement
-- Remote engine integration
-- Security tests
-- Performance benchmarks
-- Recovery and failure testing
+- Shield Mesh SDK (Middleware, Check, Observe)
+- Engine SDK for external Intelligence
+- NATS JetStream transport
+- Local decision state with TTL expirations
+- Failure-policy enforcement (FailOpen/FailClosed)
+- Binary Reverse Proxy (`shieldd`)
 
-Performance claims will be published only after reproducible benchmarks are available.
+---
+
+## Installation
+
+To install the Shield Mesh SDK in your Go project:
+
+```bash
+go get github.com/JohnnyAsh-U/shieldmesh
+```
+
+To install the standalone `shieldd` proxy:
+
+```bash
+go install github.com/JohnnyAsh-U/shieldmesh/cmd/shieldd@latest
+```
+
+---
+
+## Quick Start
+
+### 1. Using the SDK Middleware
+
+You can seamlessly wrap any Go `http.Handler` with Shield Mesh.
+
+```go
+package main
+
+import (
+	"log"
+	"net/http"
+	
+	"github.com/JohnnyAsh-U/shieldmesh"
+	"github.com/JohnnyAsh-U/shieldmesh/shared"
+	"github.com/JohnnyAsh-U/shieldmesh/transport"
+)
+
+func main() {
+	// Connect to NATS JetStream
+	tr, err := transport.NewNatsTransport("nats://localhost:4222")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize Shield Mesh
+	shield := shieldmesh.NewShieldMesh(shieldmesh.Config{
+		Transport:  tr,
+		Name:       "api-node-1",
+		FailPolicy: shared.FAILOPEN, // FailOpen or FailClosed
+	})
+	
+	// Sync background intelligence
+	shield.Start(context.Background())
+	defer shield.Stop()
+
+	// Define your app
+	app := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Protected by Shield Mesh!"))
+	})
+
+	// Wrap app with Shield Mesh
+	http.ListenAndServe(":8080", shield.Middleware(app))
+}
+```
+
+### 2. Running the Standalone Proxy (or NGINX Auth Server)
+
+If you don't want to modify your application's code, you can run Shield Mesh as a standalone service. It supports two modes: `proxy` and `auth`.
+
+**Reverse Proxy Mode (Default):**
+Acts as a full sidecar reverse proxy protecting your application.
+
+```bash
+shieldd --listen :8080 --target http://localhost:8081 --nats nats://localhost:4222 --mode proxy
+```
+
+**NGINX Auth Request Mode:**
+Integrates seamlessly with NGINX's `auth_request` module. In this mode, `shieldd` evaluates incoming headers (`X-Forwarded-For` or `X-Real-IP`) and responds with `200 OK` (allow) or `403 Forbidden` (block), without actually proxying the HTTP body.
+
+```bash
+shieldd --listen :8080 --nats nats://localhost:4222 --mode auth
+```
+
+*Nginx configuration example:*
+```nginx
+location / {
+    auth_request /shieldmesh_auth;
+    proxy_pass http://your_upstream;
+}
+
+location = /shieldmesh_auth {
+    proxy_pass http://localhost:8080;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+    proxy_set_header X-Real-IP $remote_addr;
+}
+```
 
 ---
 
 ## Roadmap
 
-### Phase 1 — Core
+### Phase 1 — Core (✅ Completed)
 
-- [ ] Core SDK
-- [ ] "Observe()"
-- [ ] "Check()"
-- [ ] Decision model
-- [ ] Local enforcement state
-- [ ] Fail-open / fail-closed behavior
-- [ ] Versioning
+- [x] Core SDK
+- [x] "Observe()"
+- [x] "Check()"
+- [x] Decision model
+- [x] Local enforcement state
+- [x] Fail-open / fail-closed behavior
+- [x] Versioning
 
-### Phase 2 — NATS
+### Phase 2 — NATS (✅ Completed)
 
-- [ ] NATS transport
-- [ ] JetStream integration
-- [ ] Request/event retention
-- [ ] Decision retention
-- [ ] Decision synchronization
-- [ ] Reconnection and recovery
+- [x] NATS transport
+- [x] JetStream integration
+- [x] Request/event retention
+- [x] Decision retention
+- [x] Decision synchronization
+- [x] Reconnection and recovery
 
 ### Phase 3 — Security
 

@@ -91,7 +91,65 @@ if decision.Action == shieldmesh.ActionBlock {
 
 ## 3. The Engine SDK Remote Intelligence Engines
 Shield Mesh does not embed security intelligence engines inside the SDK. Engines are strictly remote, external components (like a WAF, SIEM, or behavioral detection system) that produce intelligence. ShieldMesh is responsible solely for distributing the resulting decisions to local enforcement points. This separation allows security engines and applications to evolve independently.
-<!-- To simple code snippet for the engine be shown here -->
+
+Here is an example of how you can write a simple remote engine using the SDK:
+
+```go
+package main
+
+import (
+	"context"
+	"log"
+	"time"
+
+	"github.com/JohnnyAsh-U/shieldmesh/engine"
+	"github.com/JohnnyAsh-U/shieldmesh/shared"
+	"github.com/JohnnyAsh-U/shieldmesh/store"
+	"github.com/JohnnyAsh-U/shieldmesh/transport"
+)
+
+func main() {
+	ctx := context.Background()
+	tr, err := transport.NewNatsTransport("nats://localhost:4222")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Initialize the Engine
+	eng, err := engine.NewEngine(tr.(*transport.NatsTransport), shared.EngineInfo{
+		Name:         "rate-limit-engine",
+		Capabilities: []string{"rate-limiting"},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer eng.Close()
+
+	// Subscribe to incoming requests from all applications
+	err = eng.Subscribe(ctx, func(req shared.Request) {
+		log.Printf("Received request from %s at path %s", req.RemoteAddr, req.Path)
+		
+		// Simple analysis: if path is /admin, block it immediately
+		if req.Path == "/admin" {
+			log.Println("Suspicious access to /admin, publishing BLOCK decision")
+			
+			eng.PublishDecision(ctx, store.Decision{
+				Action:  shared.ActionBlock,
+				Subject: req.Subject,
+				Reason:  "Unauthorized access to admin panel",
+				ExpiresAt: time.Now().Add(5 * time.Minute), // Block for 5 minutes
+			})
+		}
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Engine listening for requests...")
+	select {} // block forever
+}
+```
 
 ## 4. Scaling to the Fabric (The Topology Invariant)
 

@@ -44,7 +44,6 @@ type Request struct {
 	Attributes map[string]any `json:"attributes,omitempty"`
 }
 
-
 type EngineInfo struct {
 	ID           string   `json:"id"`
 	Name         string   `json:"name"`

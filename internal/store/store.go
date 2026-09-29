@@ -11,26 +11,24 @@ import (
 	// "github.com/JohnnyAsh-U/
 )
 
-
-
 type MapStore struct {
-	mu sync.RWMutex
-	decisions map[string]Decision
-	lastSeq uint64
+	mu          sync.RWMutex
+	decisions   map[string]shared.Decision
+	lastSeq     uint64
 	lastApplied time.Time
 }
 
-func NewMapStore() *MapStore{
+func NewMapStore() *MapStore {
 	return &MapStore{
-		decisions: make(map[string]Decision, 1024),
+		decisions: make(map[string]shared.Decision, 1024),
 	}
 }
 
 func key(subject shared.Subject) string {
-	return subject.Type+":"+subject.ID
+	return subject.Type + ":" + subject.ID
 }
 
-func (s *MapStore) Apply(d Decision) error {
+func (s *MapStore) Apply(d shared.Decision) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -39,7 +37,7 @@ func (s *MapStore) Apply(d Decision) error {
 	}
 
 	// Never skip version
-	if s.lastSeq != 0 && d.Version != s.lastSeq + 1 {
+	if s.lastSeq != 0 && d.Version != s.lastSeq+1 {
 		return shared.ErrInvalidVersion
 	}
 
@@ -49,24 +47,24 @@ func (s *MapStore) Apply(d Decision) error {
 	return nil
 }
 
-func (s *MapStore) Get(subject shared.Subject) (Decision, bool){
-	s.mu.Lock()
+func (s *MapStore) Get(subject shared.Subject) (shared.Decision, bool) {
+	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	d, ok := s.decisions[key(subject)]
 
 	if !ok {
-		return Decision{}, false
+		return shared.Decision{}, false
 	}
 
 	if !d.Active(time.Now()) {
-		return Decision{}, false
+		return shared.Decision{}, false
 	}
 
 	return d, true
 }
 
-func (s *MapStore) Delete(subject shared.Subject){
+func (s *MapStore) Delete(subject shared.Subject) {
 	s.mu.Lock()
 	delete(s.decisions, key(subject))
 	s.mu.Unlock()
@@ -85,7 +83,6 @@ func (s *MapStore) DeleteExpired() int {
 	}
 	return n
 }
-
 
 func (s *MapStore) LastSeq() uint64 {
 	s.mu.RLock()
