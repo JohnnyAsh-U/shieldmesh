@@ -243,7 +243,7 @@ func (t *NatsTransport) PublishDecision(ctx context.Context, d shared.Decision) 
 	// Update the decision with the version and re-publish so it can be streamed
 	d.Version = rev
 	payload, _ = json.Marshal(d)
-	_, err = t.decisionskv.Put(key(d.Subject), payload) 
+	_, err = t.decisionskv.Put(key(d.Subject), payload)
 	if err != nil {
 		return 0, err
 	}
