@@ -6,7 +6,8 @@
 **Distributed security intelligence. Local enforcement.**
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/JohnnyAsh-U/shieldmesh)](https://goreportcard.com/report/github.com/JohnnyAsh-U/shieldmesh)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
 
 Shield Mesh is a distributed security decision fabric that connects remote security intelligence engines to applications through low-latency local enforcement.
 
