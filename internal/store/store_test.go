@@ -87,6 +87,6 @@ func BenchmarkStore_Apply(b *testing.B) {
 			Subject:   shared.Subject{Type: "ip", ID: fmt.Sprintf("127.0.0.%d", i%255)},
 			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
-		s.Apply(d, uint64(i + 1))
+		s.Apply(d, uint64(i+1))
 	}
 }

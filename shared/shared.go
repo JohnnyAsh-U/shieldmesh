@@ -22,8 +22,8 @@ var (
 )
 
 var (
-	SubjectIP SubjectsType = "ip"
-	SubjectID SubjectsType = "id"
+	SubjectIP   SubjectsType = "ip"
+	SubjectID   SubjectsType = "id"
 	SubjectName SubjectsType = "name"
 )
 
@@ -36,7 +36,7 @@ var (
 
 type Subject struct {
 	Type SubjectsType `json:"type"`
-	ID   string `json:"id"`
+	ID   string       `json:"id"`
 }
 
 // Request is raw application telemetry pushed asynchronously into the fabric.
