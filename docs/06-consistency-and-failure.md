@@ -35,7 +35,7 @@ A Node must remain resilient when the Fabric fails. Here is exactly how the runt
 ### Node Restart & Reconnection
 
 *   **Scenario:** The Application Node scales down, restarts, or reconnects after a prolonged network partition.
-*   **Resolution:** Shield Mesh utilizes Versioned Decision Synchronization.
+*   **Resolution:** Shield Mesh utilizes Decision Sequence Synchronization.
 1.  An enforcement node maintains the version of the latest decision state it has successfully applied (e.g., `AppliedVersion = 1842`).
 2.  When the node reconnects, it does not simply subscribe to the live stream. Instead, it first synchronizes decisions sequentially from the transport that are newer than its last applied version.
 3.  Missed updates can be successfully recovered because the NATS JetStream transport or ShieldMesh fabric retains Decision state for a default period of **7 days**.
@@ -49,7 +49,7 @@ A Node must remain resilient when the Fabric fails. Here is exactly how the runt
 ### Out-of-Order Decisions
 
 *   **Scenario:** An Engine issues an `ALLOW` at T1, and a `BLOCK` at T2. Due to a network retry, the Node receives the `BLOCK` first, and the `ALLOW` second.
-*   **Resolution:** The Node's state materializer must evaluate the decision's explicit `version` or `issued_at` timestamp. If a newly arrived message has a version older than the currently cached state for that Subject, it is silently discarded.
+*   **Resolution:** The Node's state materializer must evaluate the decision's explicit `sequence` or `issued_at` timestamp. If a newly arrived message has a version older than the currently cached state for that Subject, it is silently discarded.
 
 ### Expired Decisions (Replay Attacks)
 

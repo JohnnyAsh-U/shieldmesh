@@ -20,7 +20,7 @@ import (
 func main() {
 	var (
 		listenAddr = flag.String("listen", ":8080", "Address to listen on")
-		targetURL  = flag.String("target", "http://localhost:8081", "Target backend URL to proxy to (only in proxy mode)")
+		targetURL  = flag.String("target", "http://localhost:9091", "Target backend URL to proxy to (only in proxy mode)")
 		natsURL    = flag.String("nats", "nats://localhost:4222", "NATS JetStream URL")
 		failPolicy = flag.String("fail-policy", "open", "Failure policy: 'open' or 'closed'")
 		nodeName   = flag.String("node", "shieldd-proxy-1", "Name of the enforcement node")

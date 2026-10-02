@@ -61,7 +61,7 @@ func TestNatsPropagationDelay(t *testing.T) {
 	}
 
 	start := time.Now()
-	_, err = engineTr.PublishDecision(context.Background(), dec)
+	err = engineTr.PublishDecision(context.Background(), dec)
 	if err != nil {
 		t.Fatalf("Failed to publish decision: %v", err)
 	}

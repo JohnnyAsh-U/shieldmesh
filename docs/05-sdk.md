@@ -59,7 +59,7 @@ Used to asynchronously report telemetry to the intelligence plane. This is a fir
 err := shield.Observe(ctx, shieldmesh.Event{
 	Type: shieldmesh.EventAuthenticationFailed,
 	Subject: shieldmesh.Subject{
-		Type: shieldmesh.SubjectIP,
+		Type: shared.SubjectIP,
 		ID:   "203.0.113.10",
 	},
 	Resource: "/api/v1/login",
@@ -76,7 +76,7 @@ Used to explicitly ask the local enforcement state for a security decision. This
 ```go
 decision, err := shield.Check(ctx, shieldmesh.Request{
 	Subject: shieldmesh.Subject{
-		Type: shieldmesh.SubjectUser,
+		Type: shared.SubjectID,
 		ID:   "usr_123",
 	},
 })
@@ -151,40 +151,14 @@ func main() {
 }
 ```
 
-## 4. Scaling to the Fabric (The Topology Invariant)
-
-The most important architectural rule of the SDK is: **Changing deployment topology must not require application security logic to change**.
-
-When a startup grows from a single server to a distributed fleet of 50 microservices, the developer **does not** rewrite their `Check()` or `Observe() `calls. They simply change the initialization parameters to inject a distributed transport.
-
-```go
-import (
-	"github.com/ashmesh/ashmesh/pkg/shieldmesh"
-	"github.com/ashmesh/ashmesh/transports/nats"
-)
-
-
-// The ONLY code change required to scale to a Distributed Fabric
-shield, err := shieldmesh.New(shieldmesh.Config{
-	Transport: nats.New(
-		nats.WithURL("nats://shieldmesh-cluster.internal:4222"), 
-	),
-	Name:       "node-fabric-01",
-	FailPolicy: shieldmesh.FailClosed,
-})
-```
-
-
-Because `transports/nats` is an external package that satisfies the internal `Transport` interface, the core application logic remains completely unaware that its events are now routing through a JetStream cluster. Applications can use either NATS or the native Shield Mesh Custom Transport.
-
-
-## 5. Failure Policy
+## 4. Failure Policy
 ShieldMesh provides two explicit request-path failure policies. Applications explicitly choose their policy during initialization. The failure policy is part of the security model rather than an implicit behavior.
 
 
 ### Fail Open
 Prioritizes availability if the enforcement state cannot be trusted or determined.
  * State valid → enforce decision
+ * State nodecision → allow
  * State unavailable → allow
  * State corrupted → allow
  * State ambiguous → allow
@@ -192,6 +166,7 @@ Prioritizes availability if the enforcement state cannot be trusted or determine
 ### Fail Closed
 Prioritizes strict security if the enforcement state cannot be trusted or determined.
  * State valid → enforce decision
+ * State nodecision → block
  * State unavailable → block
  * State corrupted → block
  * State ambiguous → block

@@ -16,11 +16,10 @@ func TestMapStore_ApplyAndGet(t *testing.T) {
 	d := shared.Decision{
 		Action:    shared.ActionBlock,
 		Subject:   subject,
-		Version:   1,
 		ExpiresAt: time.Now().Add(1 * time.Minute),
 	}
 
-	err := s.Apply(d)
+	err := s.Apply(d, 1)
 	if err != nil {
 		t.Fatalf("expected nil, got %v", err)
 	}
@@ -42,11 +41,10 @@ func TestMapStore_ExpiredDecision(t *testing.T) {
 	d := shared.Decision{
 		Action:    shared.ActionBlock,
 		Subject:   subject,
-		Version:   1,
 		ExpiresAt: time.Now().Add(-1 * time.Minute), // Already expired
 	}
 
-	s.Apply(d)
+	s.Apply(d, 1)
 
 	// Get should return false
 	_, found := s.Get(subject)
@@ -69,10 +67,9 @@ func BenchmarkStore_Get(b *testing.B) {
 	d := shared.Decision{
 		Action:    shared.ActionBlock,
 		Subject:   subject,
-		Version:   1,
 		ExpiresAt: time.Now().Add(1 * time.Hour),
 	}
-	s.Apply(d)
+	s.Apply(d, 1)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -88,9 +85,8 @@ func BenchmarkStore_Apply(b *testing.B) {
 		d := shared.Decision{
 			Action:    shared.ActionBlock,
 			Subject:   shared.Subject{Type: "ip", ID: fmt.Sprintf("127.0.0.%d", i%255)},
-			Version:   uint64(i + 1),
 			ExpiresAt: time.Now().Add(1 * time.Hour),
 		}
-		s.Apply(d)
+		s.Apply(d, uint64(i + 1))
 	}
 }

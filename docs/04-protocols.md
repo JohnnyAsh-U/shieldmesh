@@ -2,30 +2,8 @@
 
 This document defines the wire-level representations and semantic rules of the ShieldMesh protocol. By formalizing these payloads independent of any specific programming language, we ensure that a Node written in Go, an Engine written in Python, and a Transport backed by NATS can interoperate flawlessly.
 
-## 1. The Message Envelope
 
-Every payload transmitted across the Shield Mesh Fabric is wrapped in a standard `Message` envelope. This allows the Transport layer to route and filter data without needing to deserialize the inner payload.
-
-```json
-{
-  "id": "msg_01h62v...",
-  "type": "request",
-  "schema_version": "v1",
-  "source": "node_web_01",
-  "timestamp": "2026-09-26T06:30:00Z",
-  "payload": { ... }
-}
-```
-
-* **`id`**: A unique identifier (e.g., ULID or UUIDv7) for tracing and deduplication.
-* **`type`**: Must be `request`, or `decision`.
-* **`schema_version`**: Allows future protocol evolution without breaking backwards compatibility.
-* **`source`**: The identifier of the Node or Engine that produced this message.
-* **`timestamp`**: UTC time of message generation.
-
----
-
-## 2. The Core Schemas
+## 1. The Core Schemas
 The payload field of the Message envelope contains one of the following JSON structures.
 
 ### Subject
@@ -72,7 +50,6 @@ Emitted by Policy Engines to dictate enforcement state on the Application Nodes.
   "metadata": {
     "tenant_id" : "838"
   },
-  "version": 1842,
   "ttl_seconds":"60",
   "reason": "Automated block: Repeated credential stuffing",
   "source": "shieldmesh_policy_engine",
@@ -84,7 +61,7 @@ Emitted by Policy Engines to dictate enforcement state on the Application Nodes.
 
 ---
 
-## 3. Protocol Semantics & Rules
+## 2. Protocol Semantics & Rules
 
 To maintain consistency across a distributed fabric, all participants must adhere to the following protocol rules.
 

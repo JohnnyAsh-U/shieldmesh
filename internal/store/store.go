@@ -1,14 +1,10 @@
 package store
 
 import (
-	// "go/types"
 	"sync"
 	"time"
 
 	"github.com/JohnnyAsh-U/shieldmesh/shared"
-	// "github.com/JohnnyAsh-U/shieldmesh/types"
-	// "github.com/JohnnyAsh-U/shieldmesh"
-	// "github.com/JohnnyAsh-U/
 )
 
 type MapStore struct {
@@ -25,25 +21,25 @@ func NewMapStore() *MapStore {
 }
 
 func key(subject shared.Subject) string {
-	return subject.Type + ":" + subject.ID
+	return string(subject.Type) + "_" + subject.ID
 }
 
-func (s *MapStore) Apply(d shared.Decision) error {
+func (s *MapStore) Apply(d shared.Decision, Seq uint64) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if d.Version <= s.lastSeq {
+	if Seq <= s.lastSeq {
 		return nil
 	}
 
 	// Never skip version
-	if s.lastSeq != 0 && d.Version != s.lastSeq+1 {
+	if s.lastSeq != 0 && Seq != s.lastSeq+1 {
 		return shared.ErrInvalidVersion
 	}
 
 	s.decisions[key(d.Subject)] = d
 	s.lastApplied = time.Now()
-	s.lastSeq = d.Version
+	s.lastSeq = Seq
 	return nil
 }
 

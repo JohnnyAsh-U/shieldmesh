@@ -50,7 +50,7 @@ func (e *Engine) Subscribe(ctx context.Context, handler func(req shared.Request)
 }
 
 // PublishDecision publishes a security decision back to the fabric
-func (e *Engine) PublishDecision(ctx context.Context, decision shared.Decision) (uint64, error) {
+func (e *Engine) PublishDecision(ctx context.Context, decision shared.Decision) error {
 	// Stamp the decision with the engine source
 	if decision.Source == "" {
 		decision.Source = e.info.Name

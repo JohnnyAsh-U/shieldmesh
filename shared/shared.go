@@ -8,6 +8,7 @@ import (
 // Action defines the enforcement behavior applied to a Subject.
 type Action string
 type FailPolicy string
+type SubjectsType string
 
 const (
 	ActionAllow     Action = "ALLOW"
@@ -21,6 +22,12 @@ var (
 )
 
 var (
+	SubjectIP SubjectsType = "ip"
+	SubjectID SubjectsType = "id"
+	SubjectName SubjectsType = "name"
+)
+
+var (
 	ErrNotFound       = errors.New("Shieldmesh: not found")
 	ErrStaleState     = errors.New("Shieldmesh: enforcement state is stale")
 	ErrInvalidVersion = errors.New("Shieldmesh: invalid version")
@@ -28,7 +35,7 @@ var (
 )
 
 type Subject struct {
-	Type string `json:"type"`
+	Type SubjectsType `json:"type"`
 	ID   string `json:"id"`
 }
 

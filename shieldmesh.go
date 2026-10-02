@@ -8,6 +8,7 @@ import (
 	"github.com/JohnnyAsh-U/shieldmesh/internal/store"
 	"github.com/JohnnyAsh-U/shieldmesh/shared"
 	"github.com/JohnnyAsh-U/shieldmesh/transport"
+	"github.com/google/uuid"
 )
 
 type Config struct {
@@ -93,11 +94,6 @@ func (s *ShieldMesh) Start(ctx context.Context) {
 		s.store.DeleteExpired()
 	}()
 
-	//go routine to sync and subscribe
-	go func() {
-		s.tr.Sync(ctx, s.store)
-	}()
-
 	s.tr.SubscribeDecisions(ctx, s.store)
 }
 
@@ -117,13 +113,19 @@ func (s *ShieldMesh) Middleware(next http.Handler) http.Handler {
 			clientIP = r.RemoteAddr
 		}
 
+		RequestID := r.Header.Get("X-Request-ID")
+
+		if RequestID == "" {
+			RequestID = uuid.NewString()
+		}
+
 		req := shared.Request{
-			ID:         r.Header.Get("X-Request-ID"), // Or generate one
+			ID:         RequestID, // Or generate one
 			Method:     r.Method,
 			Path:       r.URL.Path,
 			RemoteAddr: clientIP,
 			Subject: shared.Subject{
-				Type: "ip",
+				Type: shared.SubjectIP,
 				ID:   clientIP,
 			},
 			Timestamp: time.Now(),

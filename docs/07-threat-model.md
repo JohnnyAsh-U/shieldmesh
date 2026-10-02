@@ -70,7 +70,7 @@ The most dangerous assumption in a distributed security system is conflating ide
 When deploying or modifying Shield Mesh, the following security invariants must be maintained:
 
 1.  **Zero Trust Intelligence:** Nodes must never blindly trust a Decision just because it arrived via the Fabric. Decisions must be validated for Freshness (issued_at) and Version.
-2.  **Version Validation:** Nodes must validate decision versions before applying state transitions to ensure chronological accuracy and prevent state regression.
+2.  **Version Validation:** Nodes must validate decision sequence before applying state transitions to ensure chronological accuracy and prevent state regression.
 3.  **Integrity:** Decision state must be strictly validated before it is accepted into the local enforcement state.
 4.  **Idempotent Application:** Decision updates may be delivered more than once. Applying the same valid decision multiple times must not corrupt the local enforcement state.
 5.  **Ephemerality:** Permanent blocks (Decisions without an `expires_at`) are an anti-pattern. Expired decisions must not remain enforceable indefinitely.

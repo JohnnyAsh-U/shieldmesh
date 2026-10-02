@@ -154,9 +154,7 @@ Conceptually:
 type Decision struct {
     Subject   string
     Action    Action
-    Version   uint64
 
-    Version  string
     Reason    string
     Confidence float64
 
@@ -164,7 +162,7 @@ type Decision struct {
     ExpiresAt time.Time
 }
 ```
-Decisions are versioned so that enforcement nodes can determine which state they have applied and recover from missed updates.
+Decisions use Stream Sequence so that enforcement nodes can determine which state they have applied and recover from missed updates.
 
 ---
 
@@ -262,7 +260,7 @@ These are default retention policies and can be configured by the deployment.
 
 ## Decision Synchronization
 
-An enforcement node maintains the version of the latest decision state it has successfully applied.
+An enforcement node maintains the sequence of the latest decision state it has successfully applied.
 
 For example:
 
@@ -306,6 +304,7 @@ Shield Mesh provides two explicit request-path failure policies.
 If the enforcement state cannot be trusted or determined:
 ```
 State valid       → enforce decision
+State no decision → allow
 State unavailable → allow
 State corrupted   → allow
 State ambiguous   → allow
@@ -317,6 +316,7 @@ If the enforcement state cannot be trusted or determined:
 
 ```
 State valid       → enforce decision
+State no decision → block
 State unavailable → block
 State corrupted   → block
 State ambiguous   → block
@@ -385,15 +385,10 @@ Shield Mesh is designed around several principles:
 
 Remote engines and transport participants must be authenticated before participating in the decision system.
 
-**Authorization**
-
-Authentication alone does not grant permission to publish arbitrary decisions.
-
-Transport-level authorization determines what a participant can publish or consume.
 
 **Version validation**
 
-Nodes must validate decision versions before applying state transitions.
+Nodes must validate decision sequence before applying state transitions.
 
 **Expiration**
 

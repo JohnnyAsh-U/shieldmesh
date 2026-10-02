@@ -9,7 +9,6 @@ type Decision struct {
 	Action     Action    `json:"action"`
 	Subject    Subject   `json:"subject"`
 	Reason     string    `json:"reason"`
-	Version    uint64    `json:"version"`
 	Source     string    `json:"source"` // Policy engine or administrator
 	Confidence float64   `json:"confidence"`
 	IssuedAt   time.Time `json:"issued_at"`
